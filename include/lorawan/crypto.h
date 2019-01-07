@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdbool.h>
+#include <stdint.h>
 
 uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
 		size_t data1len, const void* data2, size_t data2len);

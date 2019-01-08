@@ -76,33 +76,33 @@ uint32_t crypto_mic(const void* key, size_t keylen, const void* data,
 	return crypto_mic_2(key, keylen, data, datalen, NULL, 0);
 }
 
-#define SKEYPAD (SESSIONKEYLEN - (1 + APPNONCELEN + NETIDLEN + DEVNONCELEN))
-
 static void crypto_calculatesessionkeys_key(const uint8_t* key,
 		uint32_t appnonce, uint32_t netid, uint16_t devnonce, uint8_t* skey,
 		uint8_t kb) {
 
-	uint8_t pad[SKEYPAD] = { 0 };
+	LORAWAN_WRITER_STACKBUFFER(keymaterial, SESSIONKEYLEN);
+	lorawan_writer_appendu8(kb, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu24(appnonce, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu24(netid, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu16(devnonce, lorawan_write_simple_buffer_callback,
+			&keymaterial);
 
 	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 	EVP_CIPHER_CTX_init(ctx);
 	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
 
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
-
 	int outlen;
-	EVP_EncryptUpdate(ctx, skey, &outlen, &kb, sizeof(kb));
-	skey += outlen;
-	EVP_EncryptUpdate(ctx, skey, &outlen, (void*) &appnonce, APPNONCELEN);
-	skey += outlen;
-	EVP_EncryptUpdate(ctx, skey, &outlen, (void*) &netid, NETIDLEN);
-	skey += outlen;
-	EVP_EncryptUpdate(ctx, skey, &outlen, (void*) &devnonce, DEVNONCELEN);
-	skey += outlen;
-	EVP_EncryptUpdate(ctx, skey, &outlen, pad, sizeof(pad));
+	// notice that len is used here and not pos
+	// the keymaterial needs to be padded with zeros.
+	// the buffer above is initilised with zeros so we
+	// get the padding for free
+	EVP_EncryptUpdate(ctx, skey, &outlen, keymaterial.data, keymaterial.len);
 	skey += outlen;
 	EVP_EncryptFinal(ctx, skey, &outlen);
-	skey += outlen;
 	EVP_CIPHER_CTX_free(ctx);
 }
 

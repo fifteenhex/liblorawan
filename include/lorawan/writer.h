@@ -11,8 +11,8 @@ struct lorawan_writer_simple_buffer {
 	unsigned pos;
 };
 
-#define LORAWAN_WRITE_STACKBUFFER(name, size) uint8_t name_buff[size];\
-												struct lorawan_writer_simple_buffer buffer = { .data = name_buff, .len = sizeof(name_buff),.pos = 0}
+#define LORAWAN_WRITER_STACKBUFFER(name, size) uint8_t name##_buff[size] = {0};\
+												struct lorawan_writer_simple_buffer name = { .data = name##_buff, .len = sizeof(name##_buff),.pos = 0}
 
 typedef int (*lorawan_writer)(uint8_t* data, size_t len, void* userdata);
 
@@ -25,8 +25,8 @@ static int __attribute__((unused)) lorawan_write_simple_buffer_callback(
 	pb->pos += len;
 	return LORAWAN_NOERR;
 }
-static void lorawan_writer_appendbuff(uint8_t* buff, size_t len,
-		lorawan_writer cb, void* userdata) {
+static void __attribute__((unused)) lorawan_writer_appendbuff(uint8_t* buff,
+		size_t len, lorawan_writer cb, void* userdata) {
 	cb(buff, len, userdata);
 }
 

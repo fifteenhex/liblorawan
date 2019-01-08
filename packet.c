@@ -13,11 +13,9 @@ int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
 
 	int ret = LORAWAN_ERR;
 
-	const int largest = 64; // the largest this should get for as923 is 32 it seems but oversize for now
-
 	// Because everything except MHDR is encrypted we need to
 	// build an intermediate version first.
-	LORAWAN_WRITE_STACKBUFFER(buffer, largest);
+	LORAWAN_WRITER_STACKBUFFER(buffer, LORAWAN_JOINACK_MAXSZ);
 
 	uint8_t mhdr = (MHDR_MTYPE_JOINACK << MHDR_MTYPE_SHIFT);
 	lorawan_writer_appendu8(mhdr, lorawan_write_simple_buffer_callback,

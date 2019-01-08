@@ -1,7 +1,7 @@
 project('liblorawan', 'c')
 
 deps = [  dependency('libcrypto') ]
-src = [ 'crypto.c' ]
+src = [ 'crypto.c', 'packet.c' ]
 lib = shared_library('lorawan', src,
                      dependencies : deps,
                      install : true)

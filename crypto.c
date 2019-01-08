@@ -30,8 +30,8 @@ uint32_t crypto_mic(const void* key, size_t keylen, const void* data,
 	return crypto_mic_2(key, keylen, data, datalen, NULL, 0);
 }
 
-void crypto_encryptfordevice(const char* key, void* data, size_t datalen,
-		void* dataout) {
+void crypto_encryptfordevice(const unsigned char* key, void* data,
+		size_t datalen, void* dataout) {
 	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
 	EVP_CIPHER_CTX_init(ctx);
 	EVP_DecryptInit(ctx, EVP_aes_128_ecb(), key, NULL);

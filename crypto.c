@@ -5,6 +5,52 @@
 #include "include/lorawan/crypto.h"
 #include "include/lorawan/lorawan.h"
 
+int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
+		lorawan_writer writer, void* userdata) {
+	int ret = LORAWAN_ERR;
+
+	EVP_CIPHER_CTX* ctx = NULL;
+
+	// This has to be a multiple of the AES block size
+	if (datalen % 16 != 0)
+		goto out;
+
+	ctx = EVP_CIPHER_CTX_new();
+	EVP_CIPHER_CTX_init(ctx);
+
+	if (!EVP_DecryptInit(ctx, EVP_aes_128_ecb(), key, NULL))
+		goto out;
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+
+	uint8_t tmp[16];
+	int outlen;
+	for (unsigned pos = 0; pos < datalen; pos += sizeof(tmp)) {
+		int len = datalen - pos;
+		if (len > sizeof(tmp))
+			len = sizeof(tmp);
+
+		if (!EVP_DecryptUpdate(ctx, tmp, &outlen, data + pos, len)) {
+			ret = LORAWAN_CRYPTO_UPDTERR;
+			goto out;
+		}
+		if ((ret = writer(tmp, outlen, userdata)) != LORAWAN_NOERR)
+			goto out;
+	}
+
+	if (!EVP_DecryptFinal(ctx, tmp, &outlen)) {
+		ret = LORAWAN_CRYPTO_FNLZERR;
+		goto out;
+	}
+	if ((ret = writer(tmp, outlen, userdata)) != LORAWAN_NOERR)
+		goto out;
+
+	ret = LORAWAN_NOERR;
+
+	out: if (ctx != NULL)
+		EVP_CIPHER_CTX_free(ctx);
+	return ret;
+}
+
 uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
 		size_t data1len, const void* data2, size_t data2len) {
 	CMAC_CTX *ctx = CMAC_CTX_new();
@@ -28,17 +74,6 @@ uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
 uint32_t crypto_mic(const void* key, size_t keylen, const void* data,
 		size_t datalen) {
 	return crypto_mic_2(key, keylen, data, datalen, NULL, 0);
-}
-
-void crypto_encryptfordevice(const unsigned char* key, void* data,
-		size_t datalen, void* dataout) {
-	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
-	EVP_DecryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
-	int outlen;
-	EVP_DecryptUpdate(ctx, dataout, &outlen, data, datalen);
-	EVP_DecryptFinal(ctx, dataout + outlen, &outlen);
-	EVP_CIPHER_CTX_free(ctx);
 }
 
 #define SKEYPAD (SESSIONKEYLEN - (1 + APPNONCELEN + NETIDLEN + DEVNONCELEN))

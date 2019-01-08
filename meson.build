@@ -7,7 +7,9 @@ lib = shared_library('lorawan', src,
                      install : true)
                         
 install_headers(['include/lorawan/lorawan.h', 
-                 'include/lorawan/crypto.h'], 
+                 'include/lorawan/crypto.h',
+                 'include/lorawan/packet.h',
+                 'include/lorawan/writer.h'], 
                  subdir : 'lorawan')
                  
 inc = include_directories('include')

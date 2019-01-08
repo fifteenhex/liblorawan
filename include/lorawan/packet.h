@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define LORAWAN_NOERR			    0
-#define LORAWAN_PACKET_UKNWNTYPE	1
+#include "lorawan.h"
+#include "writer.h"
 
 struct packet_unpacked_data {
 	uint32_t devaddr;
@@ -32,5 +32,8 @@ struct packet_unpacked {
 };
 
 int packet_pack(struct packet_unpacked* unpacked, uint8_t* nwksk,
-		uint8_t* appsk);
+		uint8_t* appsk, lorawan_writer cb, void* userdata);
 int packet_unpack(uint8_t* data, size_t len, struct packet_unpacked* result);
+int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
+		const uint32_t* extrachannels, const char* appkey, lorawan_writer cb,
+		void* userdata);

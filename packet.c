@@ -7,11 +7,80 @@
 #define COPYANDINC(dst, src)	memcpy(dst, src, sizeof(*dst));\
 									src += sizeof(*dst)
 
+static void packet_appendbuff(uint8_t* buff, size_t len, lorawan_writer cb,
+		void* userdata) {
+	cb(buff, len, userdata);
+}
+
+static void packet_appendun(uint32_t value, unsigned bytes, lorawan_writer cb,
+		void* userdata) {
+	for (int i = 0; i < bytes; i++) {
+		uint8_t byte = (value >> (i * 8) & 0xff);
+		cb(&byte, 1, userdata);
+	}
+}
+
+static void packet_appendu32(uint32_t value, lorawan_writer cb, void* userdata) {
+	packet_appendun(value, 4, cb, userdata);
+}
+
+static void packet_appendu24(uint32_t value, lorawan_writer cb, void* userdata) {
+	packet_appendun(value, 3, cb, userdata);
+}
+
+static void packet_appendu16(uint16_t value, lorawan_writer cb, void* userdata) {
+	packet_appendun(value, 2, cb, userdata);
+}
+
+static void packet_appendu8(uint8_t value, lorawan_writer cb, void* userdata) {
+	packet_appendun(value, 1, cb, userdata);
+}
+
+int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
+		const uint32_t* extrachannels, const char* appkey, lorawan_writer cb,
+		void* userdata) {
+
+	int ret = LORAWAN_ERR;
+
+	const int largest = 64; // the largest this should get for as923 is 32 it seems but oversize for now
+
+	// Because everything except MHDR is encrypted we need to
+	// build an intermediate version first.
+	LORAWAN_WRITE_STACKBUFFER(buffer, largest);
+
+	uint8_t mhdr = (MHDR_MTYPE_JOINACK << MHDR_MTYPE_SHIFT);
+	packet_appendu8(mhdr, lorawan_write_simple_buffer_callback, &buffer);
+	packet_appendu24(appnonce, lorawan_write_simple_buffer_callback, &buffer);
+	uint32_t netid = 0;
+	packet_appendu24(netid, lorawan_write_simple_buffer_callback, &buffer);
+	packet_appendu32(devaddr, lorawan_write_simple_buffer_callback, &buffer);
+	uint8_t dlsettings = 0;
+	packet_appendu8(dlsettings, lorawan_write_simple_buffer_callback, &buffer);
+	uint8_t rxdelay = 0;
+	packet_appendu8(rxdelay, lorawan_write_simple_buffer_callback, &buffer);
+
+	if (extrachannels != NULL) {
+		for (int i = 0; i < 5; i++)
+			packet_appendu24(*extrachannels++,
+					lorawan_write_simple_buffer_callback, &buffer);
+		packet_appendu8(0, lorawan_write_simple_buffer_callback, &buffer);
+	}
+
+	uint32_t mic = crypto_mic(appkey, KEYLEN, buffer.data, buffer.pos);
+	packet_appendu32(mic, lorawan_write_simple_buffer_callback, &buffer);
+
+	// steam header and encrypted body
+	packet_appendu8(mhdr, cb, userdata);
+	ret = crypto_encrypt_joinack(appkey, buffer.data + 1, buffer.pos - 1, cb,
+			userdata);
+
+	//out:
+	return ret;
+}
+
 int packet_pack(struct packet_unpacked* unpacked, uint8_t* nwksk,
-		uint8_t* appsk) {
+		uint8_t* appsk, lorawan_writer cb, void* userdata) {
 	int ret = LORAWAN_NOERR;
-	size_t pktlen;
-	uint8_t* pkt = NULL;
 	switch (unpacked->type) {
 	case MHDR_MTYPE_UNCNFUP:
 	case MHDR_MTYPE_UNCNFDN:
@@ -30,11 +99,7 @@ int packet_pack(struct packet_unpacked* unpacked, uint8_t* nwksk,
 		break;
 	}
 
-	out:
-	//if (pkt != NULL)
-	//	g_free(pkt);
-
-	return ret;
+	out: return ret;
 }
 
 int packet_unpack(uint8_t* data, size_t len, struct packet_unpacked* result) {
@@ -49,6 +114,8 @@ int packet_unpack(uint8_t* data, size_t len, struct packet_unpacked* result) {
 		COPYANDINC(&result->joinreq.deveui, data);
 		COPYANDINC(&result->joinreq.devnonce, data);
 	}
+		break;
+	case MHDR_MTYPE_JOINACK:
 		break;
 	case MHDR_MTYPE_UNCNFUP:
 	case MHDR_MTYPE_UNCNFDN:

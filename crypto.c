@@ -5,6 +5,66 @@
 #include "include/lorawan/crypto.h"
 #include "include/lorawan/lorawan.h"
 
+static void crypto_calculatesessionkeys_key(const uint8_t* key,
+		uint32_t appnonce, uint32_t netid, uint16_t devnonce, uint8_t* skey,
+		uint8_t kb) {
+
+	LORAWAN_WRITER_STACKBUFFER(keymaterial, SESSIONKEYLEN);
+	lorawan_writer_appendu8(kb, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu24(appnonce, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu24(netid, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu16(devnonce, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+
+	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+	EVP_CIPHER_CTX_init(ctx);
+	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
+
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+	int outlen;
+	// notice that len is used here and not pos
+	// the keymaterial needs to be padded with zeros.
+	// the buffer above is initilised with zeros so we
+	// get the padding for free
+	EVP_EncryptUpdate(ctx, skey, &outlen, keymaterial.data, keymaterial.len);
+	skey += outlen;
+	EVP_EncryptFinal(ctx, skey, &outlen);
+	EVP_CIPHER_CTX_free(ctx);
+}
+
+static void crypto_fillin_ablock(uint8_t* block, uint8_t firstbyte, uint8_t dir,
+		uint32_t devaddr, uint32_t fcnt) {
+	// 5 - dir
+	// 6 - devaddr
+	// 10 - fcnt
+	// 15 - len
+	memset(block, 0, BLOCKLEN);
+	block[0] = firstbyte;
+	block[5] = dir;
+	memcpy(block + 6, &devaddr, sizeof(devaddr));
+	memcpy(block + 10, &fcnt, sizeof(fcnt));
+
+}
+
+static void crypto_update_ablock(uint8_t* block, uint8_t lastbyte) {
+	block[15] = lastbyte;
+}
+
+static void crypto_endecryptpayload_generates(const uint8_t* key,
+		const uint8_t* ai, uint8_t* s) {
+	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+	EVP_CIPHER_CTX_init(ctx);
+	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+	int outlen;
+	EVP_EncryptUpdate(ctx, s, &outlen, ai, BLOCKLEN);
+	EVP_EncryptFinal(ctx, s + outlen, &outlen);
+	EVP_CIPHER_CTX_free(ctx);
+}
+
 int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 		lorawan_writer writer, void* userdata) {
 	int ret = LORAWAN_ERR;
@@ -76,36 +136,6 @@ uint32_t crypto_mic(const void* key, size_t keylen, const void* data,
 	return crypto_mic_2(key, keylen, data, datalen, NULL, 0);
 }
 
-static void crypto_calculatesessionkeys_key(const uint8_t* key,
-		uint32_t appnonce, uint32_t netid, uint16_t devnonce, uint8_t* skey,
-		uint8_t kb) {
-
-	LORAWAN_WRITER_STACKBUFFER(keymaterial, SESSIONKEYLEN);
-	lorawan_writer_appendu8(kb, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-	lorawan_writer_appendu24(appnonce, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-	lorawan_writer_appendu24(netid, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-	lorawan_writer_appendu16(devnonce, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-
-	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
-	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
-
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
-	int outlen;
-	// notice that len is used here and not pos
-	// the keymaterial needs to be padded with zeros.
-	// the buffer above is initilised with zeros so we
-	// get the padding for free
-	EVP_EncryptUpdate(ctx, skey, &outlen, keymaterial.data, keymaterial.len);
-	skey += outlen;
-	EVP_EncryptFinal(ctx, skey, &outlen);
-	EVP_CIPHER_CTX_free(ctx);
-}
-
 void crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,
 		uint32_t netid, uint16_t devnonce, uint8_t* networkkey, uint8_t* appkey) {
 
@@ -122,43 +152,19 @@ void crypto_randbytes(void* buff, size_t len) {
 	RAND_bytes(buff, len);
 }
 
-void crypto_fillinblock(uint8_t* block, uint8_t firstbyte, uint8_t dir,
-		uint32_t devaddr, uint32_t fcnt, uint8_t lastbyte) {
-	// 5 - dir
-	// 6 - devaddr
-	// 10 - fcnt
-	// 15 - len
-	memset(block, 0, BLOCKLEN);
-	block[0] = firstbyte;
-	block[5] = dir;
-	memcpy(block + 6, &devaddr, sizeof(devaddr));
-	memcpy(block + 10, &fcnt, sizeof(fcnt));
-	block[15] = lastbyte;
-}
-
 void crypto_fillinblock_updownlink(uint8_t* block, uint8_t dir,
 		uint32_t devaddr, uint32_t fcnt, uint8_t lastbyte) {
-	crypto_fillinblock(block, 0x49, dir, devaddr, fcnt, lastbyte);
-}
-
-static void crypto_endecryptpayload_generates(const uint8_t* key,
-		const uint8_t* ai, uint8_t* s) {
-	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
-	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
-	int outlen;
-	EVP_EncryptUpdate(ctx, s, &outlen, ai, BLOCKLEN);
-	EVP_EncryptFinal(ctx, s + outlen, &outlen);
-	EVP_CIPHER_CTX_free(ctx);
+	crypto_fillin_ablock(block, 0x49, dir, devaddr, fcnt);
+	crypto_update_ablock(block, lastbyte);
 }
 
 void crypto_endecryptpayload(const uint8_t* key, bool downlink,
 		uint32_t devaddr, uint32_t fcnt, const uint8_t* in, uint8_t* out,
 		size_t len) {
+	uint8_t ai[BLOCKLEN];
+	crypto_fillin_ablock(ai, 0x1, downlink ? 1 : 0, devaddr, fcnt);
 	for (int i = 0; (i * 16) < len; i++) {
-		uint8_t ai[BLOCKLEN];
-		crypto_fillinblock(ai, 0x1, downlink ? 1 : 0, devaddr, fcnt, i + 1);
+		crypto_update_ablock(ai, i + 1);
 		uint8_t s[BLOCKLEN];
 		crypto_endecryptpayload_generates(key, ai, s);
 		for (int j = 0; j < 16; j++) {

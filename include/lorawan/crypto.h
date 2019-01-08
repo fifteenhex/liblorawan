@@ -16,8 +16,6 @@ void crypto_randbytes(void* buff, size_t len);
 void crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,
 		uint32_t netid, uint16_t devnonce, uint8_t* networkkey, uint8_t* appkey);
 
-void crypto_fillinblock(uint8_t* block, uint8_t firstbyte, uint8_t dir,
-		uint32_t devaddr, uint32_t fcnt, uint8_t lastbyte);
 void crypto_fillinblock_updownlink(uint8_t* block, uint8_t dir,
 		uint32_t devaddr, uint32_t fcnt, uint8_t lastbyte);
 

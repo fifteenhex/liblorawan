@@ -1,9 +1,12 @@
-#include <openssl/cmac.h>
 #include <openssl/rand.h>
 #include <string.h>
 
 #include "include/lorawan/crypto.h"
 #include "include/lorawan/lorawan.h"
+
+struct __lorawan_crypto_mic_context {
+	CMAC_CTX* cmac_cntx;
+};
 
 static void crypto_calculatesessionkeys_key(const uint8_t* key,
 		uint32_t appnonce, uint32_t netid, uint16_t devnonce, uint8_t* skey,
@@ -109,6 +112,31 @@ int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 	out: if (ctx != NULL)
 		EVP_CIPHER_CTX_free(ctx);
 	return ret;
+}
+
+lorawan_crypto_mic_context* lorawan_crypto_mic_start(const uint8_t* key) {
+	CMAC_CTX *cntx = CMAC_CTX_new();
+	CMAC_Init(cntx, key, KEYLEN, EVP_aes_128_cbc(), NULL);
+	return cntx;
+}
+
+int lorawan_crypto_mic_update(lorawan_crypto_mic_context* cntx,
+		const uint8_t* data, size_t datalen) {
+	CMAC_Update(cntx, data, datalen);
+	return 0;
+}
+
+uint32_t lorawan_crypto_mic_finalise(lorawan_crypto_mic_context* cntx) {
+	uint8_t mac[16];
+	size_t maclen;
+	CMAC_Final(cntx, mac, &maclen);
+	CMAC_CTX_free(cntx);
+
+	uint32_t mic;
+	for (int i = 3; i >= 0; i--) {
+		mic = mic << 8;
+		mic |= mac[i];
+	}
 }
 
 uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,

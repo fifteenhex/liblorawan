@@ -34,8 +34,8 @@ struct packet_unpacked {
 int packet_pack(struct packet_unpacked* unpacked, uint8_t* nwksk,
 		uint8_t* appsk, lorawan_writer cb, void* userdata);
 int packet_unpack(uint8_t* data, size_t len, struct packet_unpacked* result);
-int packet_build_joinreq(uint64_t appeui, uint64_t deveui, uint16_t devnonce,
-		lorawan_writer cb, void* userdata);
+int packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui,
+		uint16_t devnonce, lorawan_writer cb, void* userdata);
 int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
-		const uint32_t* extrachannels, const char* appkey, lorawan_writer cb,
+		const uint32_t* extrachannels, const uint8_t* appkey, lorawan_writer cb,
 		void* userdata);

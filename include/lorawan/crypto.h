@@ -3,13 +3,11 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <openssl/cmac.h>
 
 #include "writer.h"
 
-uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
-		size_t data1len, const void* data2, size_t data2len);
-uint32_t crypto_mic(const void* key, size_t keylen, const void* data,
-		size_t datalen);
+typedef CMAC_CTX lorawan_crypto_mic_context;
 
 void crypto_randbytes(void* buff, size_t len);
 
@@ -25,3 +23,14 @@ void crypto_endecryptpayload(const uint8_t* key, bool downlink,
 
 int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 		lorawan_writer writer, void* userdata);
+
+lorawan_crypto_mic_context* lorawan_crypto_mic_start(const uint8_t* key);
+int lorawan_crypto_mic_update(lorawan_crypto_mic_context* cntx,
+		const uint8_t* data, size_t datalen);
+uint32_t lorawan_crypto_mic_finalise(lorawan_crypto_mic_context* cntx);
+
+// junk
+uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
+		size_t data1len, const void* data2, size_t data2len);
+uint32_t crypto_mic(const void* key, size_t keylen, const void* data,
+		size_t datalen);

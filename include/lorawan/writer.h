@@ -30,12 +30,17 @@ static void __attribute__((unused)) lorawan_writer_appendbuff(uint8_t* buff,
 	cb(buff, len, userdata);
 }
 
-static void __attribute__((unused)) lorawan_writer_appendun(uint32_t value,
+static void __attribute__((unused)) lorawan_writer_appendun(uint64_t value,
 		unsigned bytes, lorawan_writer cb, void* userdata) {
 	for (int i = 0; i < bytes; i++) {
 		uint8_t byte = (value >> (i * 8) & 0xff);
 		cb(&byte, 1, userdata);
 	}
+}
+
+static void __attribute__((unused)) lorawan_writer_appendu64(uint64_t value,
+		lorawan_writer cb, void* userdata) {
+	lorawan_writer_appendun(value, 8, cb, userdata);
 }
 
 static void __attribute__((unused)) lorawan_writer_appendu32(uint32_t value,

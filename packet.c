@@ -7,6 +7,20 @@
 #define COPYANDINC(dst, src)	memcpy(dst, src, sizeof(*dst));\
 									src += sizeof(*dst)
 
+int packet_build_joinreq(uint64_t appeui, uint64_t deveui, uint16_t devnonce,
+		lorawan_writer cb, void* userdata) {
+	int ret = LORAWAN_ERR;
+	uint8_t mhdr = 0;
+	lorawan_writer_appendu8(mhdr, cb, userdata);
+	lorawan_writer_appendu64(appeui, cb, userdata);
+	lorawan_writer_appendu64(deveui, cb, userdata);
+	lorawan_writer_appendu16(devnonce, cb, userdata);
+	uint32_t mic = 0xff00ff00;
+	lorawan_writer_appendu32(mic, cb, userdata);
+	ret = LORAWAN_NOERR;
+	return ret;
+}
+
 int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
 		const uint32_t* extrachannels, const char* appkey, lorawan_writer cb,
 		void* userdata) {

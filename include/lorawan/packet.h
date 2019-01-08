@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define LORAWAN_PACKET_UNPACK_NOERR		0
-#define LORAWAN_PACKET_UNPACK_UKNWNTYPE	1
+#define LORAWAN_NOERR			    0
+#define LORAWAN_PACKET_UKNWNTYPE	1
 
 struct packet_unpacked_data {
 	uint32_t devaddr;
@@ -31,4 +31,6 @@ struct packet_unpacked {
 	uint32_t mic;
 };
 
+int packet_pack(struct packet_unpacked* unpacked, uint8_t* nwksk,
+		uint8_t* appsk);
 int packet_unpack(uint8_t* data, size_t len, struct packet_unpacked* result);

@@ -123,15 +123,10 @@ bool ack, uint32_t framecounter, uint8_t port, const uint8_t* payload,
 	lorawan_writer_appendu16(fcnt, packet_write_micandchain, &cbdata);
 
 	if (payload != NULL) {
-		uint8_t encryptedpayload[128];
-		if (payloadlen > sizeof(encryptedpayload))
-			payloadlen = sizeof(encryptedpayload);
 		uint8_t* key = (uint8_t*) (port == 0 ? nwksk : appsk);
-		crypto_endecryptpayload(key, true, devaddr, framecounter, payload,
-				encryptedpayload, payloadlen);
 		lorawan_writer_appendu8(port, packet_write_micandchain, &cbdata);
-		lorawan_writer_appendbuff(encryptedpayload, payloadlen,
-				packet_write_micandchain, &cbdata);
+		lorawan_crypto_endecryptpayload(key, true, devaddr, framecounter,
+				payload, payloadlen, packet_write_micandchain, &cbdata);
 	}
 
 	// calculate the final mic and append it to the packet

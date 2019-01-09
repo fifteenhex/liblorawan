@@ -1,5 +1,6 @@
 from libc.stdint cimport uint64_t, uint16_t, uint8_t
 from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
+import sys
 
 cdef extern from "include/lorawan/writer.h":
 	ctypedef int (*lorawan_writer)(uint8_t* data, size_t len, void* userdata)
@@ -19,6 +20,22 @@ def builder_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> by
 	assert len(deveui) is 8
 	assert len(devnonce) is 2
 	
+	# on a little endian machine we'll need to flip the appeui
+	# deveui and devnonce around. Maybe this isn't needed
+	# if the interface is better? Dunno.
+	#if sys.byteorder is 'little':
+	native_appeui = bytearray(appeui)
+	native_appeui.reverse()
+	appeui = bytes(native_appeui)
+	 
+	native_deveui = bytearray(deveui)
+	native_deveui.reverse()
+	deveui = bytes(native_deveui)
+	
+	native_devnonce = bytearray(devnonce)
+	native_devnonce.reverse()
+	devnonce = bytes(native_devnonce)
+
 	c_key = <uint8_t*> PyBytes_AsString(key)
 	c_appeui = (<uint64_t*> PyBytes_AsString(appeui))[0]
 	c_deveui = (<uint64_t*> PyBytes_AsString(deveui))[0]

@@ -39,3 +39,6 @@ int packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui,
 int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
 		const uint32_t* extrachannels, const uint8_t* appkey, lorawan_writer cb,
 		void* userdata);
+
+bool lorawan_packet_verifymic(uint8_t* key, uint8_t* data, size_t len,
+		uint32_t* mic, uint32_t* actualmic);

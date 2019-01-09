@@ -110,6 +110,38 @@ int packet_pack(struct packet_unpacked* unpacked, uint8_t* nwksk,
 	out: return ret;
 }
 
+static uint32_t lorawan_packet_readu32(uint8_t* data) {
+	uint32_t result = 0;
+	for (int i = 3; i >= 0; i--) {
+		result = result << 8;
+		result |= data[i];
+	}
+
+	return result;
+}
+
+bool lorawan_packet_verifymic(uint8_t* key, uint8_t* data, size_t len,
+		uint32_t* mic, uint32_t* actualmic) {
+	uint8_t mhdr = LORAWAN_TYPE(data[0]);
+	uint32_t packetmic = 0;
+	uint32_t calculatedmic = 0;
+	switch (mhdr) {
+	case MHDR_MTYPE_JOINREQ:
+		packetmic = lorawan_packet_readu32(data + (len - 4));
+		calculatedmic = lorawan_crypto_mic_simple(key, data, len - 4);
+		break;
+	default:
+		return false;
+	}
+
+	if (mic != NULL)
+		*mic = packetmic;
+	if (actualmic != NULL)
+		*actualmic = calculatedmic;
+
+	return packetmic == calculatedmic;
+}
+
 int packet_unpack(uint8_t* data, size_t len, struct packet_unpacked* result) {
 	uint8_t* dataend = data + (len - sizeof(result->mic));
 

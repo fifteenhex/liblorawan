@@ -148,24 +148,12 @@ uint32_t lorawan_crypto_mic_simple(const void* key, const void* data,
 	return lorawan_crypto_mic_finalise(cntx);
 }
 
-uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
-		size_t data1len, const void* data2, size_t data2len) {
-	CMAC_CTX *ctx = CMAC_CTX_new();
-	CMAC_Init(ctx, key, keylen, EVP_aes_128_cbc(), NULL);
-	CMAC_Update(ctx, data1, data1len);
-	if (data2 != NULL)
-		CMAC_Update(ctx, data2, data2len);
-	uint8_t mac[16];
-	size_t maclen;
-	CMAC_Final(ctx, mac, &maclen);
-	CMAC_CTX_free(ctx);
-
-	uint32_t mic;
-	for (int i = 3; i >= 0; i--) {
-		mic = mic << 8;
-		mic |= mac[i];
-	}
-	return mic;
+uint32_t lorawan_crypto_mic_simple2(const void* key, size_t keylen,
+		const void* data1, size_t data1len, const void* data2, size_t data2len) {
+	lorawan_crypto_mic_context* cntx = lorawan_crypto_mic_start(key);
+	lorawan_crypto_mic_update(cntx, data1, data1len);
+	lorawan_crypto_mic_update(cntx, data2, data2len);
+	return lorawan_crypto_mic_finalise(cntx);
 }
 
 void crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,

@@ -30,7 +30,5 @@ int lorawan_crypto_mic_update(lorawan_crypto_mic_context* cntx,
 uint32_t lorawan_crypto_mic_finalise(lorawan_crypto_mic_context* cntx);
 uint32_t lorawan_crypto_mic_simple(const void* key, const void* data,
 		size_t datalen);
-
-// junk
-uint32_t crypto_mic_2(const void* key, size_t keylen, const void* data1,
-		size_t data1len, const void* data2, size_t data2len);
+uint32_t lorawan_crypto_mic_simple2(const void* key, size_t keylen,
+		const void* data1, size_t data1len, const void* data2, size_t data2len);

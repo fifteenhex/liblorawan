@@ -17,7 +17,7 @@ cdef int __bytearray_writer(uint8_t* data, size_t len, void* userdata):
 	ba += asbytes
 	return 0
 
-def builder_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> bytearray:
+def build_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> bytearray:
 	assert len(key) is 16
 	assert len(appeui) is 8
 	assert len(deveui) is 8
@@ -48,7 +48,7 @@ def builder_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> by
 	packet_build_joinreq(c_key, c_appeui, c_deveui, c_devnonce, __bytearray_writer, <void*> ba)
 	return ba
 
-def unpack_joinack(bytes key, bytes packet) -> bytearray:
+def decrypt_joinack(bytes key, bytes packet) -> bytearray:
 	assert len(key) is 16
 	assert (len(packet) - 1) % 16 == 0
 

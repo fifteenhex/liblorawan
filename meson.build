@@ -28,7 +28,7 @@ if cython.found() and py3_dep.found()
   pyx_c = custom_target('lorawan_pyx',
   output : 'lorawan_pyx.c',
   input : 'lorawan.pyx',
-  command : [cython, '@INPUT@', '-o', '@OUTPUT@'])
+  command : [cython, '-3', '@INPUT@', '-o', '@OUTPUT@'])
   
   py3_mod = import('python3')
   py3 = py3_mod.find_python()

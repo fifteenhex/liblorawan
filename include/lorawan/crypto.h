@@ -19,6 +19,8 @@ void crypto_fillinblock_updownlink(uint8_t* block, uint8_t dir,
 
 int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 		lorawan_writer writer, void* userdata);
+int lorawan_crypto_decrypt_joinack(const unsigned char* key, void* data,
+		size_t datalen, lorawan_writer writer, void* userdata);
 
 lorawan_crypto_mic_context* lorawan_crypto_mic_start(const uint8_t* key);
 int lorawan_crypto_mic_update(lorawan_crypto_mic_context* cntx,

@@ -8,6 +8,9 @@ cdef extern from "include/lorawan/writer.h":
 cdef extern from "include/lorawan/packet.h":
 	int packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui, uint16_t devnonce, lorawan_writer cb, void* userdata);
 
+cdef extern from "include/lorawan/crypto.h":
+	int lorawan_crypto_decrypt_joinack(const unsigned char* key, void* data, size_t datalen, lorawan_writer writer, void* userdata);
+
 cdef int __bytearray_writer(uint8_t* data, size_t len, void* userdata):
 	asbytes = PyBytes_FromStringAndSize(<char*>data,len)
 	ba=<object>userdata
@@ -43,4 +46,16 @@ def builder_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> by
 	
 	ba = bytearray()
 	packet_build_joinreq(c_key, c_appeui, c_deveui, c_devnonce, __bytearray_writer, <void*> ba)
+	return ba
+
+def unpack_joinack(bytes key, bytes packet) -> bytearray:
+	assert len(key) is 16
+	assert (len(packet) - 1) % 16 == 0
+
+	c_key = <uint8_t*> PyBytes_AsString(key)
+	c_encryptedpart = <uint8_t*> PyBytes_AsString(packet[1:])
+
+	ba = bytearray()
+	ba += packet[1:1]
+	lorawan_crypto_decrypt_joinack(c_key, c_encryptedpart, len(packet)-1, __bytearray_writer, <void*> ba)
 	return ba

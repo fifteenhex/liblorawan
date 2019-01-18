@@ -68,8 +68,8 @@ static void crypto_endecryptpayload_generates(const uint8_t* key,
 	EVP_CIPHER_CTX_free(ctx);
 }
 
-int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
-		lorawan_writer writer, void* userdata) {
+static int crypto_endecrypt_joinack(const unsigned char* key, void* data,
+		size_t datalen, bool decrypt, lorawan_writer writer, void* userdata) {
 	int ret = LORAWAN_ERR;
 
 	EVP_CIPHER_CTX* ctx = NULL;
@@ -81,8 +81,14 @@ int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 	ctx = EVP_CIPHER_CTX_new();
 	EVP_CIPHER_CTX_init(ctx);
 
-	if (!EVP_DecryptInit(ctx, EVP_aes_128_ecb(), key, NULL))
-		goto out;
+	if (decrypt) {
+		if (!EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL))
+			goto out;
+	} else {
+		if (!EVP_DecryptInit(ctx, EVP_aes_128_ecb(), key, NULL))
+			goto out;
+	}
+
 	EVP_CIPHER_CTX_set_padding(ctx, 0);
 
 	uint8_t tmp[16];
@@ -92,18 +98,33 @@ int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 		if (len > sizeof(tmp))
 			len = sizeof(tmp);
 
-		if (!EVP_DecryptUpdate(ctx, tmp, &outlen, data + pos, len)) {
-			ret = LORAWAN_CRYPTO_UPDTERR;
-			goto out;
+		if (decrypt) {
+			if (!EVP_EncryptUpdate(ctx, tmp, &outlen, data + pos, len)) {
+				ret = LORAWAN_CRYPTO_UPDTERR;
+				goto out;
+			}
+		} else {
+			if (!EVP_DecryptUpdate(ctx, tmp, &outlen, data + pos, len)) {
+				ret = LORAWAN_CRYPTO_UPDTERR;
+				goto out;
+			}
 		}
 		if ((ret = writer(tmp, outlen, userdata)) != LORAWAN_NOERR)
 			goto out;
 	}
 
-	if (!EVP_DecryptFinal(ctx, tmp, &outlen)) {
-		ret = LORAWAN_CRYPTO_FNLZERR;
-		goto out;
+	if (decrypt) {
+		if (!EVP_EncryptFinal(ctx, tmp, &outlen)) {
+			ret = LORAWAN_CRYPTO_FNLZERR;
+			goto out;
+		}
+	} else {
+		if (!EVP_DecryptFinal(ctx, tmp, &outlen)) {
+			ret = LORAWAN_CRYPTO_FNLZERR;
+			goto out;
+		}
 	}
+
 	if ((ret = writer(tmp, outlen, userdata)) != LORAWAN_NOERR)
 		goto out;
 
@@ -112,6 +133,16 @@ int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
 	out: if (ctx != NULL)
 		EVP_CIPHER_CTX_free(ctx);
 	return ret;
+}
+
+int crypto_encrypt_joinack(const unsigned char* key, void* data, size_t datalen,
+		lorawan_writer writer, void* userdata) {
+	return crypto_endecrypt_joinack(key, data, datalen, false, writer, userdata);
+}
+
+int lorawan_crypto_decrypt_joinack(const unsigned char* key, void* data,
+		size_t datalen, lorawan_writer writer, void* userdata) {
+	return crypto_endecrypt_joinack(key, data, datalen, true, writer, userdata);
 }
 
 lorawan_crypto_mic_context* lorawan_crypto_mic_start(const uint8_t* key) {

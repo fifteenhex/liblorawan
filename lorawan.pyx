@@ -1,4 +1,4 @@
-from libc.stdint cimport uint64_t, uint16_t, uint8_t
+from libc.stdint cimport uint64_t, uint32_t, uint16_t, uint8_t
 from cpython.bytes cimport PyBytes_FromStringAndSize, PyBytes_AsString
 import sys
 
@@ -10,6 +10,7 @@ cdef extern from "include/lorawan/packet.h":
 
 cdef extern from "include/lorawan/crypto.h":
 	int lorawan_crypto_decrypt_joinack(const unsigned char* key, void* data, size_t datalen, lorawan_writer writer, void* userdata);
+	uint32_t lorawan_crypto_mic_simple(const void* key, const void* data, size_t datalen);
 
 cdef int __bytearray_writer(uint8_t* data, size_t len, void* userdata):
 	asbytes = PyBytes_FromStringAndSize(<char*>data,len)
@@ -53,9 +54,17 @@ def decrypt_joinack(bytes key, bytes packet) -> bytearray:
 	assert (len(packet) - 1) % 16 == 0
 
 	c_key = <uint8_t*> PyBytes_AsString(key)
-	c_encryptedpart = <uint8_t*> PyBytes_AsString(packet[1:])
+	encryptedpart = packet[1:]
+	c_encryptedpart = <uint8_t*> PyBytes_AsString(encryptedpart)
 
 	ba = bytearray()
-	ba += packet[1:1]
-	lorawan_crypto_decrypt_joinack(c_key, c_encryptedpart, len(packet)-1, __bytearray_writer, <void*> ba)
+	ba += packet[0:1]
+	lorawan_crypto_decrypt_joinack(c_key, c_encryptedpart, len(encryptedpart), __bytearray_writer, <void*> ba)
 	return ba
+	
+def calculate_mic(bytes key, bytes data) -> int:
+	assert len(key) is 16
+	c_key = <uint8_t*> PyBytes_AsString(key)
+	c_data = <uint8_t*> PyBytes_AsString(data)
+	mic = lorawan_crypto_mic_simple(c_key, c_data, len(data))
+	return mic

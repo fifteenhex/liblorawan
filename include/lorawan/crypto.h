@@ -30,6 +30,7 @@ uint32_t lorawan_crypto_mic_simple(const void* key, const void* data,
 		size_t datalen);
 uint32_t lorawan_crypto_mic_simple2(const void* key, size_t keylen,
 		const void* data1, size_t data1len, const void* data2, size_t data2len);
-void lorawan_crypto_endecryptpayload(const uint8_t* key, bool downlink,
+
+int lorawan_crypto_endecryptpayload(const uint8_t* key, bool downlink,
 		uint32_t devaddr, uint32_t fcnt, const uint8_t* in, size_t len,
 		lorawan_writer writer, void* userdata);

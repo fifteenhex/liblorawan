@@ -25,40 +25,43 @@ static int __attribute__((unused)) lorawan_write_simple_buffer_callback(
 	pb->pos += len;
 	return LORAWAN_NOERR;
 }
-static void __attribute__((unused)) lorawan_writer_appendbuff(uint8_t* buff,
+static int __attribute__((unused)) lorawan_writer_appendbuff(uint8_t* buff,
 		size_t len, lorawan_writer cb, void* userdata) {
-	cb(buff, len, userdata);
+	return cb(buff, len, userdata);
 }
 
-static void __attribute__((unused)) lorawan_writer_appendun(uint64_t value,
+static int __attribute__((unused)) lorawan_writer_appendun(uint64_t value,
 		unsigned bytes, lorawan_writer cb, void* userdata) {
+	int ret = LORAWAN_NOERR;
 	for (int i = 0; i < bytes; i++) {
 		uint8_t byte = (value >> (i * 8) & 0xff);
-		cb(&byte, 1, userdata);
+		if ((ret = cb(&byte, 1, userdata)) != LORAWAN_NOERR)
+			break;
 	}
+	return ret;
 }
 
-static void __attribute__((unused)) lorawan_writer_appendu64(uint64_t value,
+static int __attribute__((unused)) lorawan_writer_appendu64(uint64_t value,
 		lorawan_writer cb, void* userdata) {
-	lorawan_writer_appendun(value, 8, cb, userdata);
+	return lorawan_writer_appendun(value, 8, cb, userdata);
 }
 
-static void __attribute__((unused)) lorawan_writer_appendu32(uint32_t value,
+static int __attribute__((unused)) lorawan_writer_appendu32(uint32_t value,
 		lorawan_writer cb, void* userdata) {
-	lorawan_writer_appendun(value, 4, cb, userdata);
+	return lorawan_writer_appendun(value, 4, cb, userdata);
 }
 
-static void __attribute__((unused)) lorawan_writer_appendu24(uint32_t value,
+static int __attribute__((unused)) lorawan_writer_appendu24(uint32_t value,
 		lorawan_writer cb, void* userdata) {
-	lorawan_writer_appendun(value, 3, cb, userdata);
+	return lorawan_writer_appendun(value, 3, cb, userdata);
 }
 
-static void __attribute__((unused)) lorawan_writer_appendu16(uint16_t value,
+static int __attribute__((unused)) lorawan_writer_appendu16(uint16_t value,
 		lorawan_writer cb, void* userdata) {
-	lorawan_writer_appendun(value, 2, cb, userdata);
+	return lorawan_writer_appendun(value, 2, cb, userdata);
 }
 
-static void __attribute__((unused)) lorawan_writer_appendu8(uint8_t value,
+static int __attribute__((unused)) lorawan_writer_appendu8(uint8_t value,
 		lorawan_writer cb, void* userdata) {
-	lorawan_writer_appendun(value, 1, cb, userdata);
+	return lorawan_writer_appendun(value, 1, cb, userdata);
 }

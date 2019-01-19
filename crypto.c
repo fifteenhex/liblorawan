@@ -208,9 +208,10 @@ void crypto_fillinblock_updownlink(uint8_t* block, uint8_t dir,
 	crypto_update_ablock(block, lastbyte);
 }
 
-void lorawan_crypto_endecryptpayload(const uint8_t* key, bool downlink,
+int lorawan_crypto_endecryptpayload(const uint8_t* key, bool downlink,
 		uint32_t devaddr, uint32_t fcnt, const uint8_t* in, size_t len,
 		lorawan_writer writer, void* userdata) {
+	int ret = LORAWAN_NOERR;
 	uint8_t ai[BLOCKLEN];
 	crypto_fillin_ablock(ai, 0x1, downlink ? 1 : 0, devaddr, fcnt);
 	for (int i = 0; (i * 16) < len; i++) {
@@ -222,7 +223,9 @@ void lorawan_crypto_endecryptpayload(const uint8_t* key, bool downlink,
 			if (offset == len)
 				break;
 			uint8_t v = in[offset] ^ s[j];
-			writer(&v, sizeof(v), userdata);
+			if ((ret = writer(&v, sizeof(v), userdata)) != LORAWAN_NOERR)
+				goto out;
 		}
 	}
+	out: return ret;
 }

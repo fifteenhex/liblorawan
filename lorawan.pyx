@@ -92,5 +92,8 @@ def build_data(int type, long devaddr, int framecounter, int port, bytes payload
 	c_nwksk = <uint8_t*> PyBytes_AsString(nwksk)
 	c_appsk = <uint8_t*> PyBytes_AsString(appsk)
 	ba = bytearray()
-	lorawan_packet_build_data(type, devaddr, adr, ack, framecounter, port, c_payload, payload_len, c_nwksk, c_appsk, __bytearray_writer, <void*> ba)
-	return bytes(ba)
+	ret = lorawan_packet_build_data(type, devaddr, adr, ack, framecounter, port, c_payload, payload_len, c_nwksk, c_appsk, __bytearray_writer, <void*> ba)
+	if ret is 0:
+		return bytes(ba)
+	else:
+		return None

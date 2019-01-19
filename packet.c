@@ -13,13 +13,14 @@ struct packet_mic_and_chained_cb {
 	void* chained_userdata;
 };
 
-static int packet_write_micandchain(uint8_t* data, size_t len, void* userdata) {
+static int lorawan_packet_write_micandchain(uint8_t* data, size_t len,
+		void* userdata) {
 	struct packet_mic_and_chained_cb* cbdata = userdata;
 	lorawan_crypto_mic_update(cbdata->mic, data, len);
 	return cbdata->chained_writer(data, len, cbdata->chained_userdata);
 }
 
-int packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui,
+int lorawan_packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui,
 		uint16_t devnonce, lorawan_writer cb, void* userdata) {
 	int ret = LORAWAN_ERR;
 
@@ -29,10 +30,11 @@ int packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui,
 			.chained_writer = cb, .chained_userdata = userdata };
 
 	uint8_t mhdr = 0;
-	lorawan_writer_appendu8(mhdr, packet_write_micandchain, &cbdata);
-	lorawan_writer_appendu64(appeui, packet_write_micandchain, &cbdata);
-	lorawan_writer_appendu64(deveui, packet_write_micandchain, &cbdata);
-	lorawan_writer_appendu16(devnonce, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu8(mhdr, lorawan_packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu64(appeui, lorawan_packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu64(deveui, lorawan_packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu16(devnonce, lorawan_packet_write_micandchain,
+			&cbdata);
 
 	uint32_t mic = lorawan_crypto_mic_finalise(miccntx);
 	lorawan_writer_appendu32(mic, cb, userdata);
@@ -40,7 +42,7 @@ int packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui,
 	return ret;
 }
 
-int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
+int lorawan_packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
 		const uint32_t* extrachannels, const uint8_t* appkey, lorawan_writer cb,
 		void* userdata) {
 
@@ -56,21 +58,24 @@ int packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
 			.chained_userdata = &buffer };
 
 	uint8_t mhdr = (MHDR_MTYPE_JOINACK << MHDR_MTYPE_SHIFT);
-	lorawan_writer_appendu8(mhdr, packet_write_micandchain, &cbdata);
-	lorawan_writer_appendu24(appnonce, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu8(mhdr, lorawan_packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu24(appnonce, lorawan_packet_write_micandchain,
+			&cbdata);
 	uint32_t netid = 0;
-	lorawan_writer_appendu24(netid, packet_write_micandchain, &cbdata);
-	lorawan_writer_appendu32(devaddr, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu24(netid, lorawan_packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu32(devaddr, lorawan_packet_write_micandchain,
+			&cbdata);
 	uint8_t dlsettings = 0;
-	lorawan_writer_appendu8(dlsettings, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu8(dlsettings, lorawan_packet_write_micandchain,
+			&cbdata);
 	uint8_t rxdelay = 0;
-	lorawan_writer_appendu8(rxdelay, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu8(rxdelay, lorawan_packet_write_micandchain, &cbdata);
 
 	if (extrachannels != NULL) {
 		for (int i = 0; i < 5; i++)
-			lorawan_writer_appendu24(*extrachannels++, packet_write_micandchain,
-					&cbdata);
-		lorawan_writer_appendu8(0, packet_write_micandchain, &cbdata);
+			lorawan_writer_appendu24(*extrachannels++,
+					lorawan_packet_write_micandchain, &cbdata);
+		lorawan_writer_appendu8(0, lorawan_packet_write_micandchain, &cbdata);
 	}
 
 	uint32_t mic = lorawan_crypto_mic_finalise(miccntx);
@@ -108,25 +113,27 @@ bool ack, uint32_t framecounter, uint8_t port, const uint8_t* payload,
 
 	// build the packet
 	uint8_t mhdr = (type << MHDR_MTYPE_SHIFT);
-	lorawan_writer_appendu8(mhdr, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu8(mhdr, lorawan_packet_write_micandchain, &cbdata);
 
-	lorawan_writer_appendu32(devaddr, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu32(devaddr, lorawan_packet_write_micandchain,
+			&cbdata);
 
 	uint8_t fctrl = 0;
 	if (adr)
 		fctrl |= LORAWAN_FHDR_FCTRL_ADR;
 	if (ack)
 		fctrl |= LORAWAN_FHDR_FCTRL_ACK;
-	lorawan_writer_appendu8(fctrl, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu8(fctrl, lorawan_packet_write_micandchain, &cbdata);
 
 	uint16_t fcnt = framecounter & 0xffff;
-	lorawan_writer_appendu16(fcnt, packet_write_micandchain, &cbdata);
+	lorawan_writer_appendu16(fcnt, lorawan_packet_write_micandchain, &cbdata);
 
 	if (payload != NULL) {
 		uint8_t* key = (uint8_t*) (port == 0 ? nwksk : appsk);
-		lorawan_writer_appendu8(port, packet_write_micandchain, &cbdata);
+		lorawan_writer_appendu8(port, lorawan_packet_write_micandchain,
+				&cbdata);
 		lorawan_crypto_endecryptpayload(key, true, devaddr, framecounter,
-				payload, payloadlen, packet_write_micandchain, &cbdata);
+				payload, payloadlen, lorawan_packet_write_micandchain, &cbdata);
 	}
 
 	// calculate the final mic and append it to the packet

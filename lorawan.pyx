@@ -19,11 +19,10 @@ cdef int __bytearray_writer(uint8_t* data, size_t len, void* userdata):
 	ba += asbytes
 	return 0
 
-def build_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> bytearray:
+def build_joinreq(bytes key, bytes appeui, bytes deveui, int devnonce) -> bytearray:
 	assert len(key) is 16
 	assert len(appeui) is 8
 	assert len(deveui) is 8
-	assert len(devnonce) is 2
 	
 	# on a little endian machine we'll need to flip the appeui
 	# deveui and devnonce around. Maybe this isn't needed
@@ -36,18 +35,13 @@ def build_joinreq(bytes key, bytes appeui, bytes deveui, bytes devnonce) -> byte
 	native_deveui = bytearray(deveui)
 	native_deveui.reverse()
 	deveui = bytes(native_deveui)
-	
-	native_devnonce = bytearray(devnonce)
-	native_devnonce.reverse()
-	devnonce = bytes(native_devnonce)
 
 	c_key = <uint8_t*> PyBytes_AsString(key)
 	c_appeui = (<uint64_t*> PyBytes_AsString(appeui))[0]
 	c_deveui = (<uint64_t*> PyBytes_AsString(deveui))[0]
-	c_devnonce = (<uint16_t*> PyBytes_AsString(devnonce))[0]
 	
 	ba = bytearray()
-	packet_build_joinreq(c_key, c_appeui, c_deveui, c_devnonce, __bytearray_writer, <void*> ba)
+	packet_build_joinreq(c_key, c_appeui, c_deveui, devnonce, __bytearray_writer, <void*> ba)
 	return ba
 
 def decrypt_joinack(bytes key, bytes packet) -> bytearray:

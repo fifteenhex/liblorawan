@@ -8,36 +8,6 @@ struct __lorawan_crypto_mic_context {
 	CMAC_CTX* cmac_cntx;
 };
 
-static void crypto_calculatesessionkeys_key(const uint8_t* key,
-		uint32_t appnonce, uint32_t netid, uint16_t devnonce, uint8_t* skey,
-		uint8_t kb) {
-
-	LORAWAN_WRITER_STACKBUFFER(keymaterial, SESSIONKEYLEN);
-	lorawan_writer_appendu8(kb, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-	lorawan_writer_appendu24(appnonce, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-	lorawan_writer_appendu24(netid, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-	lorawan_writer_appendu16(devnonce, lorawan_write_simple_buffer_callback,
-			&keymaterial);
-
-	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
-	EVP_CIPHER_CTX_init(ctx);
-	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
-
-	EVP_CIPHER_CTX_set_padding(ctx, 0);
-	int outlen;
-	// notice that len is used here and not pos
-	// the keymaterial needs to be padded with zeros.
-	// the buffer above is initilised with zeros so we
-	// get the padding for free
-	EVP_EncryptUpdate(ctx, skey, &outlen, keymaterial.data, keymaterial.len);
-	skey += outlen;
-	EVP_EncryptFinal(ctx, skey, &outlen);
-	EVP_CIPHER_CTX_free(ctx);
-}
-
 static void crypto_fillin_ablock(uint8_t* block, uint8_t firstbyte, uint8_t dir,
 		uint32_t devaddr, uint32_t fcnt) {
 	// 5 - dir
@@ -187,16 +157,45 @@ uint32_t lorawan_crypto_mic_simple2(const void* key, size_t keylen,
 	return lorawan_crypto_mic_finalise(cntx);
 }
 
-void crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,
-		uint32_t netid, uint16_t devnonce, uint8_t* networkkey, uint8_t* appkey) {
+static void lorawan_crypto_calculatesessionkeys_key(const uint8_t* key,
+		uint8_t kb, uint32_t appnonce, uint32_t netid, uint16_t devnonce,
+		uint8_t* skey) {
 
+	LORAWAN_WRITER_STACKBUFFER(keymaterial, SESSIONKEYLEN);
+	lorawan_writer_appendu8(kb, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu24(appnonce, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu24(netid, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+	lorawan_writer_appendu16(devnonce, lorawan_write_simple_buffer_callback,
+			&keymaterial);
+
+	EVP_CIPHER_CTX* ctx = EVP_CIPHER_CTX_new();
+	EVP_CIPHER_CTX_init(ctx);
+	EVP_EncryptInit(ctx, EVP_aes_128_ecb(), key, NULL);
+
+	EVP_CIPHER_CTX_set_padding(ctx, 0);
+	int outlen;
+	// notice that len is used here and not pos
+	// the keymaterial needs to be padded with zeros.
+	// the buffer above is initialised with zeros so we
+	// get the padding for free
+	EVP_EncryptUpdate(ctx, skey, &outlen, keymaterial.data, keymaterial.len);
+	skey += outlen;
+	EVP_EncryptFinal(ctx, skey, &outlen);
+	EVP_CIPHER_CTX_free(ctx);
+}
+
+void lorawan_crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,
+		uint32_t netid, uint16_t devnonce, uint8_t* networkkey, uint8_t* appkey) {
 	const uint8_t nwkbyte = 0x01;
 	const uint8_t appbyte = 0x02;
 
-	crypto_calculatesessionkeys_key(key, appnonce, netid, devnonce, networkkey,
-			nwkbyte);
-	crypto_calculatesessionkeys_key(key, appnonce, netid, devnonce, appkey,
-			appbyte);
+	lorawan_crypto_calculatesessionkeys_key(key, nwkbyte, appnonce, netid,
+			devnonce, networkkey);
+	lorawan_crypto_calculatesessionkeys_key(key, appbyte, appnonce, netid,
+			devnonce, appkey);
 }
 
 void crypto_randbytes(void* buff, size_t len) {

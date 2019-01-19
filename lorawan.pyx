@@ -11,6 +11,7 @@ cdef extern from "include/lorawan/packet.h":
 cdef extern from "include/lorawan/crypto.h":
 	int lorawan_crypto_decrypt_joinack(const unsigned char* key, void* data, size_t datalen, lorawan_writer writer, void* userdata);
 	uint32_t lorawan_crypto_mic_simple(const void* key, const void* data, size_t datalen);
+	void lorawan_crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce, uint32_t netid, uint16_t devnonce, uint8_t* networkkey, uint8_t* appkey)
 
 cdef int __bytearray_writer(uint8_t* data, size_t len, void* userdata):
 	asbytes = PyBytes_FromStringAndSize(<char*>data,len)
@@ -68,3 +69,15 @@ def calculate_mic(bytes key, bytes data) -> int:
 	c_data = <uint8_t*> PyBytes_AsString(data)
 	mic = lorawan_crypto_mic_simple(c_key, c_data, len(data))
 	return mic
+
+def calculate_sessionkeys(bytes key, int appnonce, int netid, int devnonce) -> bytes:
+	c_key = <uint8_t*> PyBytes_AsString(key)
+	cdef uint8_t networkkey[16]
+	cdef uint8_t appkey[16]
+	lorawan_crypto_calculatesessionkeys(c_key, appnonce, netid, devnonce, networkkey, appkey)
+	ntwkkey_asbytes = PyBytes_FromStringAndSize(<char*>networkkey,16)
+	appkey_asbytes = PyBytes_FromStringAndSize(<char*>appkey,16)
+	ba= bytearray()
+	ba += ntwkkey_asbytes
+	ba += appkey_asbytes
+	return bytes(ba)

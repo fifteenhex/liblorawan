@@ -11,7 +11,7 @@ typedef CMAC_CTX lorawan_crypto_mic_context;
 
 void crypto_randbytes(void* buff, size_t len);
 
-void crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,
+void lorawan_crypto_calculatesessionkeys(const uint8_t* key, uint32_t appnonce,
 		uint32_t netid, uint16_t devnonce, uint8_t* networkkey, uint8_t* appkey);
 
 void crypto_fillinblock_updownlink(uint8_t* block, uint8_t dir,

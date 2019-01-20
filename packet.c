@@ -155,7 +155,7 @@ bool ack, uint32_t framecounter, uint8_t port, const uint8_t* payload,
 				&cbdata);
 		if (ret != LORAWAN_NOERR)
 			goto out;
-		ret = lorawan_crypto_endecryptpayload(key, true, devaddr, framecounter,
+		ret = lorawan_crypto_endecryptpayload(key, dir, devaddr, framecounter,
 				payload, payloadlen, lorawan_packet_write_micandchain, &cbdata);
 		if (ret != LORAWAN_NOERR)
 			goto out;

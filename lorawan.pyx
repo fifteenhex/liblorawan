@@ -84,11 +84,12 @@ def build_data(int type, long devaddr, int framecounter, int port, bytes payload
 	assert nwksk is not None and len(nwksk) is 16
 	assert appsk is not None and len(appsk) is 16
 	
-	c_payload = <uint8_t*> 0
+	cdef uint8_t* c_payload = NULL
 	payload_len = 0
 	if payload is not None:
 		c_payload = <uint8_t*> PyBytes_AsString(payload)
 		payload_len = len(payload)
+	
 	c_nwksk = <uint8_t*> PyBytes_AsString(nwksk)
 	c_appsk = <uint8_t*> PyBytes_AsString(appsk)
 	ba = bytearray()

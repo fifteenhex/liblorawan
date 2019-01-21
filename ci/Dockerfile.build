@@ -1,0 +1,5 @@
+FROM debian:testing
+RUN apt-get -qq update
+RUN apt-get -qq dist-upgrade
+RUN apt-get -qq install -y build-essential git-buildpackage meson pkg-config libssl-dev
+ADD . /root/liblorawan

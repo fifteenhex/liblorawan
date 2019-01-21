@@ -1,0 +1,19 @@
+sudo: false
+
+os:
+  - linux
+
+language:
+  - c
+
+services:
+  - docker
+
+git:
+  depth: false
+
+before_install:
+  - docker pull debian:testing
+
+script:
+  - ci/buildindocker.sh

@@ -10,7 +10,7 @@ cdef extern from "include/lorawan/writer.h":
 
 cdef extern from "include/lorawan/packet.h":
 	int lorawan_packet_build_joinreq(uint8_t* key, uint64_t appeui, uint64_t deveui, uint16_t devnonce, lorawan_writer cb, void* userdata);
-	int lorawan_packet_build_data(uint8_t type, uint32_t devaddr, bool adr, bool ack, uint32_t framecounter, uint8_t port, const uint8_t* payload, size_t payloadlen, uint8_t* nwksk, uint8_t* appsk, lorawan_writer cb, void* userdata);
+	int lorawan_packet_build_data(uint8_t type, uint32_t devaddr, bool adr, bool adrackreq, bool ack, bool fpending, uint32_t framecounter, uint8_t port, const uint8_t* payload, size_t payloadlen, uint8_t* nwksk, uint8_t* appsk, lorawan_writer cb, void* userdata);
 
 cdef extern from "include/lorawan/crypto.h":
 	int lorawan_crypto_decrypt_joinack(const unsigned char* key, void* data, size_t datalen, lorawan_writer writer, void* userdata);
@@ -80,7 +80,7 @@ def calculate_sessionkeys(bytes key, int appnonce, int netid, int devnonce) -> b
 	ba += appkey_asbytes
 	return bytes(ba)
 
-def build_data(int type, long devaddr, int framecounter, int port, bytes payload, bytes nwksk, bytes appsk, bool adr=False, bool ack=False) -> bytes:
+def build_data(int type, long devaddr, int framecounter, int port, bytes payload, bytes nwksk, bytes appsk, bool adr=False, adrackreq=False, bool ack=False, fpending=False) -> bytes:
 	assert nwksk is not None and len(nwksk) is 16
 	assert appsk is not None and len(appsk) is 16
 	
@@ -93,7 +93,7 @@ def build_data(int type, long devaddr, int framecounter, int port, bytes payload
 	c_nwksk = <uint8_t*> PyBytes_AsString(nwksk)
 	c_appsk = <uint8_t*> PyBytes_AsString(appsk)
 	ba = bytearray()
-	ret = lorawan_packet_build_data(type, devaddr, adr, ack, framecounter, port, c_payload, payload_len, c_nwksk, c_appsk, __bytearray_writer, <void*> ba)
+	ret = lorawan_packet_build_data(type, devaddr, adr, adrackreq, ack, fpending, framecounter, port, c_payload, payload_len, c_nwksk, c_appsk, __bytearray_writer, <void*> ba)
 	if ret is 0:
 		return bytes(ba)
 	else:

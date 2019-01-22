@@ -92,9 +92,9 @@ int lorawan_packet_build_joinresponse(uint32_t appnonce, uint32_t devaddr,
 }
 
 int lorawan_packet_build_data(uint8_t type, uint32_t devaddr, bool adr,
-bool ack, uint32_t framecounter, uint8_t port, const uint8_t* payload,
-		size_t payloadlen, uint8_t* nwksk, uint8_t* appsk, lorawan_writer cb,
-		void* userdata) {
+bool adrackreq, bool ack, bool fpending, uint32_t framecounter, uint8_t port,
+		const uint8_t* payload, size_t payloadlen, uint8_t* nwksk,
+		uint8_t* appsk, lorawan_writer cb, void* userdata) {
 
 	int ret = LORAWAN_ERR;
 
@@ -133,11 +133,28 @@ bool ack, uint32_t framecounter, uint8_t port, const uint8_t* payload,
 	if (ret != LORAWAN_NOERR)
 		goto out;
 
+	// build the fctrl field
 	uint8_t fctrl = 0;
 	if (adr)
 		fctrl |= LORAWAN_FHDR_FCTRL_ADR;
 	if (ack)
 		fctrl |= LORAWAN_FHDR_FCTRL_ACK;
+	if (adrackreq) {
+		if (type == MHDR_MTYPE_CNFUP || type == MHDR_MTYPE_UNCNFUP)
+			fctrl |= LORAWAN_FHDR_FCTRL_ADRACKREQ;
+		else {
+			ret = LORAWAN_PACKET_INVLDFCTRL;
+			goto out;
+		}
+	}
+	if (fpending) {
+		if (type == MHDR_MTYPE_CNFDN || type == MHDR_MTYPE_UNCNFDN)
+			fctrl |= LORAWAN_FHDR_FCTRL_FPENDING;
+		else {
+			ret = LORAWAN_PACKET_INVLDFCTRL;
+			goto out;
+		}
+	}
 	ret = lorawan_writer_appendu8(fctrl, lorawan_packet_write_micandchain,
 			&cbdata);
 	if (ret != LORAWAN_NOERR)
